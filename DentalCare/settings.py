@@ -96,7 +96,7 @@ WSGI_APPLICATION = 'DentalCare.wsgi.application'
 #         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
 #     }
 # }
-'''
+
 DATABASES = {
    'default': {
        'ENGINE': 'django.db.backends.postgresql',
@@ -112,7 +112,7 @@ DATABASES = {
 DATABASES = {
     'default' : dj_database_url.parse(env('DATABASE_URL'))
 }
-
+'''
 # Password validation
 # https://docs.djangoproject.com/en/2.1/ref/settings/#auth-password-validators
 
