@@ -26,6 +26,9 @@ import pdfkit
 from django.template.loader import render_to_string, get_template
 from jinja2 import Template
 import asyncio
+from django.core.serializers import serialize
+import json
+from django.forms.models import model_to_dict
 # if ('runserver' in sys.argv):
 from .Whatsapptestfile import whatsappApi, openWhatsapp, whatsappApiEdit, whatsappMedia, whatsappApiDoc
     # import Whatsapptestfile
@@ -160,10 +163,101 @@ def uploadExcel(request):
 
 def index(request):
     """ Function for displaying main page of website. """
+    if request.method == 'GET':
+        currentDate = datetime.now().date()
+        curTime = datetime.now().time()
+        docName = request.session['Name']
+        currentAppointments = Appointment.objects.filter(date__gte=currentDate, time__gt= curTime, appointmentdoctor = docName).order_by('time')
+        nextFirstAppoint = None
+        nextAppointmentData = []
+        # for currentAppointment in currentAppointments:
+        #     appointDate = currentAppointment.date
+        #     appointTime = currentAppointment.time
+        #     appointPatient = currentAppointment.appointmentpatient
+        #     appointNotes = currentAppointment.notes
+        if currentAppointments:
+            nextFirstAppoint = currentAppointments.first()
+            nextAppointmentData = currentAppointments[1:]
+            status = "there are few more appointments today.."
+        else:
+            status = "there are no more appointments today.."
+            
+        context = {
+            'nextFirstAppoint' : nextFirstAppoint,
+            'curAppoints' : nextAppointmentData,
+            'status' : status,
+            # 'appointDate' : appointDate,
+            # 'appointTime' : appointTime,
+            # 'appointPatient' : appointPatient,
+            # 'appointNotes' : appointNotes,
+        }
+        
+        return render(request, "HealthCentre/index.html", context)
     
+def updateDashboard(request):
+    # if request.GET.get('currentAppointment') == None:
+        currentDate = datetime.now().date()
+        curTime = datetime.now().time()
+        docName = request.session['Name']
+        currentAppointments = Appointment.objects.filter(date__gte=currentDate, time__gte= curTime, appointmentdoctor = docName).order_by('time')
+        incompleteAppointments = Appointment.objects.filter(date__lte=currentDate, time__lte= curTime, appointmentdoctor = docName).order_by('time')
+        nextAppointmentData = []
+        # for currentAppointment in currentAppointments:
+        #     appointDate = currentAppointment.date
+        #     appointTime = currentAppointment.time
+        #     appointPatient = currentAppointment.appointmentpatient
+        #     appointNotes = currentAppointment.notes
+        #     nextAppointmentData.append({
+        #         'appointDate' : appointDate,
+        #         'appointTime' : appointTime,
+        #         'appointPatient' : appointPatient,
+        #         'appointNotes' : appointNotes,
+                
+        #     })
+        if currentAppointments:
+            
+            nextFirstAppoint = currentAppointments.first()
+            nextAppointmentData = serialize('json' ,currentAppointments[1:])
+            status = "There are few more appointments today.."
+            nextFirstAppointData = serialize('json', [nextFirstAppoint])[1:-1] if nextFirstAppoint else None
+            data = {
+                'lastIncompleteAppoint' : None,
+                'nextFirstAppoint' : json.loads(nextFirstAppointData),
+                'curAppoints' : json.loads(nextAppointmentData),
+                'status' : status
+            }
+            
+        else:    
+            
+            status = "There are no more appointments today.!."
+            data = {
+                'lastIncompleteAppoint' : None,
+                'nextFirstAppoint' : None,
+                'curAppoints' : None,
+               'status' : status
+            }
+        if incompleteAppointments:
+            latestIncompleteAppoint = incompleteAppointments.first()
+            
+            lastIncompleteAppoint = serialize('json',incompleteAppointments)
+            
+            data = {
+                'lastIncompleteAppoint' : json.loads(lastIncompleteAppoint),
+                'nextFirstAppoint' : None,
+                'curAppoints' : None,
+                'status' : None
+            }
+            
+            
+        
+        
+        # print(data)
+        # data = dashAppointData
     # Editing response headers so as to ignore cached versions of pages
-    response = render(request,"HealthCentre/index.html")
-    return responseHeadersModifier(response)
+        # response = render(request,"HealthCentre/index.html")
+        return JsonResponse(data)
+        # return render(request, "HealthCentre/index.html", context)
+        # return render(request,"HealthCentre/index.html")
 
 def register(request):
     """ Function for registering a student into the portal. """
@@ -365,7 +459,8 @@ def login(request):
                 }
                 
                 # Editing response headers so as to ignore cached versions of pages
-                response = render(request,"HealthCentre/prescriptionPortal.html", context)
+                # response = render(request,"HealthCentre/prescriptionPortal.html", context)
+                response = render(request,"HealthCentre/index.html", context)
                 return responseHeadersModifier(response)
             
             # If the user is already logged in inside of his sessions, and is a patient, then no authentication required
@@ -698,7 +793,7 @@ def doctorappointments(request):
                 appointmentPatient = request.POST['selectedPatient']
                 # prescpatient = request.POST['selectedPatient']
                 patient_id = request.POST['selectedPatient'] 
-                patient = Patient.objects.get(name=patient_id)
+                patient = Patient.objects.get(name=patient_id, doctorname = request.session['NAME'])
             # appointmentTime = datetime.(timePick) #request.POST['EnterTimeHour'].zfill(2) + request.POST['EnterTimeMinute'].zfill(2)
             datetimeObject = datetime.strptime(timePick, "%H:%M") #, "%H%M"
             datetimeObject = datetimeObject.time()
@@ -735,7 +830,7 @@ def doctorappointments(request):
             doctorid = Doctor.objects.get(name=doctor_id)
                 # existingDate = Appointment.objects.filter(date = dateobject)
             try:
-                existingTime = Appointment.objects.get(Q(time = datetimeObject) & Q(date = dateobject))
+                existingTime = Appointment.objects.get(Q(time = datetimeObject) & Q(date = dateobject) & Q(appointmentdoctor = request.session['Name']))
             except Appointment.DoesNotExist:
                 existingTime = None
                 pass
