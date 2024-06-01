@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 import threading
-from .Whatsapptestfile import openWhatsapp
+# from .Whatsapptestfile import openWhatsapp
 # from .views import whatsappNotification
 
 class HealthcentreConfig(AppConfig):

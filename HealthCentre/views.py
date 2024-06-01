@@ -29,11 +29,22 @@ import asyncio
 from django.core.serializers import serialize
 import json
 from django.forms.models import model_to_dict
-# if ('runserver' in sys.argv):
-from .Whatsapptestfile import whatsappApi, openWhatsapp, whatsappApiEdit, whatsappMedia, whatsappApiDoc
+if ('runserver' in sys.argv):
+    from .Whatsapptestfile import whatsappApi, openWhatsapp, whatsappApiEdit, whatsappMedia, whatsappApiDoc
     # import Whatsapptestfile
 
 renderedHTML = " "
+def openwhatsapp(request):
+    # openWhatsapp()
+    openWhatsapp.wp()
+    # return render(request, 'HealthCentre/adminPortal.html')
+    return HttpResponseRedirect(reverse("admin"))
+
+def closewhatsapp(request):
+    openWhatsapp.closewp()
+    # return render(request, 'HealthCentre/adminPortal.html')
+    return HttpResponseRedirect(reverse("admin"))
+
 def updateExcel(request):
     # while True:
         xlPath = os.curdir #"D:\Dental-Software-Backup\Dental-Software"
@@ -358,8 +369,8 @@ def register(request):
                     }
 
                     # Editing response headers so as to ignore cached versions of pages
-                    # response = render(request, "HealthCentre/registrationPortal.html",context)
-                    response = HttpResponseRedirect(reverse('catchqrcode'))
+                    response = render(request, "HealthCentre/registrationPortal.html",context)
+                    # response = HttpResponseRedirect(reverse('catchqrcode'))
                     return responseHeadersModifier(response)
                 except IntegrityError:
                     
@@ -426,6 +437,21 @@ def doctors(request):
     response = render(request,"HealthCentre/contactus.html",context)
     return responseHeadersModifier(response)
 
+def yourPrescriptions(request):
+    if request.method == "GET":
+        doctor = Doctor.objects.get(emailHash = request.session['userEmail'])
+        records = doctor.doctorRecords.all()
+        doctorSpecific = Prescription.objects.filter(prescribingDoctor = request.session['Name']).order_by('timestamp')
+        context = {
+                    "message" : "Successfully Logged In.",
+                    "isAuthenticated" : True,
+                    "user": records.order_by('-timestamp'),
+                    "prescriptions" : doctorSpecific,
+                    "prescMedicine" : Medicine.objects.all().order_by('id'),
+                }
+        response = render(request,"HealthCentre/prescriptionPortal.html", context)
+        return responseHeadersModifier(response)
+        
 def login(request):
     """ Function for logging in the user. """
 
@@ -530,7 +556,12 @@ def login(request):
 
             # If no such doctor or patient exists
             except Doctor.DoesNotExist:
-
+                adminUsername = "admin@123"
+                adminPassword = "12345"
+                if userName == adminUsername and userPassword == adminPassword:
+                    
+                    # return render(request, "HealthCentre/adminPortal.html")
+                    return HttpResponseRedirect(reverse("admin"))
                 # Storing message inside context variable
                 context = {
                     "message":"User does not exist.Please register first."
@@ -640,7 +671,9 @@ def login(request):
     else:
         response = render(request,"HealthCentre/loginPortal.html")
         return responseHeadersModifier(response)
+def admin(request):
     
+    return render(request, "HealthCentre/adminPortal.html")
     
 
 def emergency(request):
@@ -793,7 +826,8 @@ def doctorappointments(request):
                 appointmentPatient = request.POST['selectedPatient']
                 # prescpatient = request.POST['selectedPatient']
                 patient_id = request.POST['selectedPatient'] 
-                patient = Patient.objects.get(name=patient_id, doctorname = request.session['NAME'])
+                docName = request.session['Name']
+                patient = Patient.objects.get(name=patient_id, doctorname = docName)
             # appointmentTime = datetime.(timePick) #request.POST['EnterTimeHour'].zfill(2) + request.POST['EnterTimeMinute'].zfill(2)
             datetimeObject = datetime.strptime(timePick, "%H:%M") #, "%H%M"
             datetimeObject = datetimeObject.time()
@@ -864,11 +898,11 @@ def doctorappointments(request):
                 appointment.save()
                 doctorDetail = Doctor.objects.get(name = doctor_id)
                 doctorNumber = doctorDetail.contactNumber
-                patientDetail = Patient.objects.get(name = patient_id)
+                patientDetail = Patient.objects.get(name = patient_id, doctorname = doctor_id)
                 patientNumber = patientDetail.contactNumber
                 if (datetimeObject < datetimeObjectplusThree) and (datetimeObject > currentTimeObj1) and (currentDateTimeObj == dateobject):
                     whatsappApi(patient_id, doctor_id,  patientNumber, AppointmentTime1, AppointmentDate1, doctorDetail.clinicName) # datetimeObject, dateobject)
-                    whatsappApiDoc(doctor_id, doctorNumber, AppointmentTime1, AppointmentDate1) # datetimeObject, dateobject)
+                    whatsappApiDoc(doctor_id, doctorNumber, AppointmentTime1, AppointmentDate1, patient_id, patientNumber) # datetimeObject, dateobject)
                     # time.sleep(60)
                     
                 doctor = Doctor.objects.get(emailHash = request.session['userEmail'])
@@ -921,11 +955,12 @@ def editAppointments(request, pk):
         patientDetails = Patient.objects.get(name=appointObject.appointmentpatient)
         patientNumber = patientDetails.contactNumber
         doctor = Doctor.objects.get(name = request.session['Name'])
-        thread = threading.Thread(target = whatsappApiEdit, args = (appointObject.appointmentpatient, appointObject.appointmentdoctor, patientNumber, AppointmentTime1, AppointmentDate1, doctor.clinicName)) # appointObject.time, appointObject.date)
-        thread.start()
+        # thread = threading.Thread(target = whatsappApiEdit, args = (appointObject.appointmentpatient, appointObject.appointmentdoctor, patientNumber, AppointmentTime1, AppointmentDate1, doctor.clinicName)) # appointObject.time, appointObject.date)
+        # thread.start()
         # appointment = Appointment(time = datetimeObject, date = dateobject, subject = appointmentSubject, notes = appointmentNotes,
         #                             appointmentpatient = appointmentPatient, appointmentdoctor = appointmentDoctor)
         # appointment.save()
+        whatsappApiEdit(appointObject.appointmentpatient, appointObject.appointmentdoctor, patientNumber, AppointmentTime1, AppointmentDate1, doctor.clinicName) # appointObject.time, appointObject.date)
         doctor = Doctor.objects.get(emailHash = request.session['userEmail'])
         records = doctor.doctorRecords.all()
         context = {
@@ -1577,7 +1612,7 @@ def whatsappNotification():
                 patientNumber = patientDetail.contactNumber
                 if (AppointmentDate == currentDate):
                     whatsappApi(patientName, doctorName, patientNumber, AppointmentTime1, AppointmentDate1, doctorDetail.clinicName)
-                    whatsappApiDoc(doctorName, doctorNumber, AppointmentTime1, AppointmentDate1) #AppointmentTime, AppointmentDate)
+                    whatsappApiDoc(doctorName, doctorNumber, AppointmentTime1, AppointmentDate1, patientName, patientNumber) #AppointmentTime, AppointmentDate)
                     time.sleep(60)
                 
         # while True:

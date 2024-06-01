@@ -2,6 +2,8 @@ from WPP_Whatsapp import Create
 from django.conf import settings
 import time
 from concurrent import futures
+import sys
+from . import views
 # from playwright._impl import _api_types 
 # if __name__ == '__main__':
     # from .views import catchgenqr
@@ -36,148 +38,139 @@ client = ""
 # wpIsConnected = False
 class openWhatsapp():
         # start client with your session name
-     
-    def wp(DocName):
-        from .views import catchgenqr
-        your_session_name = DocName #"test"
-        global creator
-        creator = Create(session=your_session_name, catchQR= catchgenqr , logQR= True) #catchgenqr
+    client = None
+    creator = None
+    @classmethod
+    def wp(cls):
+    
+        # from .views import catchgenqr
+        your_session_name = "clinical" #"test"
+        # global creator
+        cls.creator = Create(session=your_session_name, catchQR= views.catchgenqr , logQR= True) #catchgenqr
         settings.GLOBAL_VAR = creator
         settings.WP_IS_CONNECTED = False
-        global client
-        try:
-            client = creator.start()
-            if client.waitForLogin():
-                time.sleep(10) 
-        except futures._base.TimeoutError():
-            time.sleep(7)
-            client.close()
+        # try:
+        cls.client = cls.creator.start()
+        # if client.waitForLogin():
+        #     time.sleep(10) 
+        # except futures._base.TimeoutError():
+        #     time.sleep(7)
+        #     client.close()
     # Now scan Whatsapp Qrcode in browser
     # check state of login
-        if creator.state != 'CONNECTED':
-        
-            raise Exception(creator.state)
-        if creator.state == 'CONNECTED' and (creator.session == DocName):
+        if cls.creator.state != 'CONNECTED':
             
-            # request.session['wpStatus'] = True
+            raise Exception(cls.creator.state)
+        if cls.creator.state == 'CONNECTED' : #and (creator.session == DocName):
+
             settings.WP_IS_CONNECTED = True
-        # return client
-        time.sleep(5)
-        # try:
-        client.close()
-        # except _api_types.Error:
-        #     time.sleep(5)
-        #     client.close()
+        
+        # time.sleep(5)
+    @classmethod
+    def closewp(cls):
+        # openWhatsapp.client.close()
+        cls.client.close()
+    
 
 def whatsappApi(patientName, doctorName, whatsappNumber, time_, date, clinicName):
     # reclient= openWhatsapp.client
-    from .views import catchgenqr
+    # from .views import catchgenqr
     phone_number = f"+91{whatsappNumber}" #phone_number = "+917904427507"  # or "+201016708170"
     message = f"APPOINTMENT REMINDER: Dear {patientName}, This is Dr.{doctorName}, from {clinicName}. You have an appointment in three hours. Your Appointment is fixed at {time_} on {date}."
+    
+    # Sesscreator = Create(session=doctorName, catchQR= catchgenqr, logQR= True)
+    # sess = Sesscreator.session
     # global client
-    # result = client.sendText(phone_number, message)
-    Sesscreator = Create(session=doctorName, catchQR= catchgenqr, logQR= True)
-    sess = Sesscreator.session
-    global client
-    try:
-        sessStart = Sesscreator.start()
-        if sessStart.waitForLogin():
-            time.sleep(10)
-    except futures._base.TimeoutError():
-        result = sessStart.sendText(phone_number, message)
-        sessStart.close()    
-    dumSess = sessStart.session
-    result = sessStart.sendText(phone_number, message)
-    time.sleep(5)
     # try:
-    sessStart.close()
-    # except _api_types.Error or futures._base.TimeoutError():
-    #     time.sleep(5)
-    #     pass
-        # sessStart.close()
+    #     sessStart = Sesscreator.start()
+    #     if sessStart.waitForLogin():
+    #         time.sleep(10)
+    # except futures._base.TimeoutError():
+    #     result = sessStart.sendText(phone_number, message)
+    #     sessStart.close()    
+    # dumSess = sessStart.session
+    result = openWhatsapp.client.sendText(phone_number, message)
+    # time.sleep(5)
+    # sessStart.close()
+    
         
-def whatsappApiDoc(doctorName, whatsappNumber, time_, date):
-    from .views import catchgenqr
+def whatsappApiDoc(doctorName, whatsappNumber, time_, date, patientName, patientNumber):
+    # from .views import catchgenqr
     phone_number = f"+91{whatsappNumber}" #phone_number = "+917904427507"  # or "+201016708170"
-    message = f"APPOINTMENT REMINDER: Dear {doctorName}, You have an appointment in three hours, fixed at {time_} on {date}. Thanks!!"
+    message = f"APPOINTMENT REMINDER: Dear {doctorName}, You have an appointment in three hours, fixed at {time_} on {date}, with {patientName}. Patient Mobile No: {patientNumber} Thanks!!"
     # global client
     # # Simple message
     # result = client.sendText(phone_number, message)
-    Sesscreator = Create(session=doctorName, catchQR= catchgenqr, logQR= True)
-    sess = Sesscreator.session
-    global client
-    try:
-        sessStart = Sesscreator.start()
-        if sessStart.waitForLogin():
-            time.sleep(10)
-    except futures._base.TimeoutError():
-        result = sessStart.sendText(phone_number, message)
-        sessStart.close()
-    dumSess = sessStart.session
-    result = sessStart.sendText(phone_number, message)
-    time.sleep(5)
+    # Sesscreator = Create(session=doctorName, catchQR= catchgenqr, logQR= True)
+    # sess = Sesscreator.session
+    # global client
     # try:
-    sessStart.close()
-    # except _api_types.Error:
-    #     time.sleep(5)
-    #     pass
-        # sessStart.close()
+    #     sessStart = Sesscreator.start()
+    #     if sessStart.waitForLogin():
+    #         time.sleep(10)
+    # except futures._base.TimeoutError():
+    #     result = sessStart.sendText(phone_number, message)
+    #     sessStart.close()
+    # dumSess = sessStart.session
+    result = openWhatsapp.client.sendText(phone_number, message)
+    # time.sleep(5)
+    
+    # sessStart.close()
+   
     
 def whatsappApiEdit(patientName, doctorName, whatsappNumber, time_, date, clinicName):
     # reclient= openWhatsapp.client
-    from .views import catchgenqr
+    # from .views import catchgenqr
     phone_number = f"+91{whatsappNumber}" #phone_number = "+917904427507"  # or "+201016708170"
     message = f"Dear {patientName}, This is Dr.{doctorName}, from {clinicName}. Your Appointment has been changed to {time_} on {date}."
-    global creator
-    Sesscreator = Create(session=doctorName, catchQR= catchgenqr, logQR= True)
-    sess = Sesscreator.session
-    global client
-    # try:
-    sessStart = Sesscreator.start()
-    print("starting whatsapp session...")
-    if sessStart.waitForLogin():
-        print("waiting for whatsapp session login...")
-        time.sleep(10)
-        print("browser must be open...")
-    # except futures._base.TimeoutError():
-        # result = sessStart.sendText(phone_number, message)
-        # sessStart.close()
-    result = sessStart.sendText(phone_number, message)
-    print("text message sent...")
-    time.sleep(5)
-    # try:
-    sessStart.close()
-    # except _api_types.Error:
-    #     time.sleep(5)
-    #     # sessStart.close()
-    #     pass
+    # global creator
+    # Sesscreator = Create(session=doctorName, catchQR= catchgenqr, logQR= True)
+    # sess = Sesscreator.session
+    # global client
+    
+    # sessStart = Sesscreator.start()
+    # print("starting whatsapp session...")
+    # if sessStart.waitForLogin():
+    #     print("waiting for whatsapp session login...")
+    #     time.sleep(10)
+    #     print("browser must be open...")
+    
+    result = openWhatsapp.client.sendText(phone_number, message)
+    # print("text message sent...")
+    # time.sleep(5)
+    
+    # sessStart.close()
+   
     
 def whatsappMedia(whatsappNumber, pdfPathForWP, docName, patientName, prescDate):
-    from .views import catchgenqr
+    # from .views import catchgenqr
     phone_number = f"+91{whatsappNumber}"
     path = pdfPathForWP
     name = patientName
     caption = prescDate
-    global client
-    Sesscreator = Create(session=docName, catchQR= catchgenqr, logQR= True)
-    sess = Sesscreator.session
-    global client
-    try:
-        sessStart = Sesscreator.start()
-        if sessStart.waitForLogin():
-            time.sleep(25)
-    except futures._base.TimeoutError():
-        result = sessStart.sendFile(phone_number, path, name, caption )
-        sessStart.close()    
-    dumSess = sessStart.session
-    result = sessStart.sendFile(phone_number, path, name, caption )
-    time.sleep(5)
+    # global client
+    # Sesscreator = Create(session=docName, catchQR= catchgenqr, logQR= True)
+    # sess = Sesscreator.session
+    # global client
     # try:
-    sessStart.close()
-    # except _api_types.Error:
-    #     time.sleep(5)
-    #     # sessStart.close()
-    #     pass
+    #     sessStart = Sesscreator.start()
+    #     if sessStart.waitForLogin():
+    #         time.sleep(25)
+    # except futures._base.TimeoutError():
+    #     result = sessStart.sendFile(phone_number, path, name, caption )
+    #     sessStart.close()    
+    # dumSess = sessStart.session
+    result = openWhatsapp.client.sendFile(phone_number, path, name, caption )
+    # time.sleep(5)
+  
+    # sessStart.close()
+ 
+    
+    
+    
+    
+    
+    
     # message = openWhatsapp.client.sendMessageOptions()
 
 
