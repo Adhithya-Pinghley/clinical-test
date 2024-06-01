@@ -1357,7 +1357,7 @@ def createTimeline(request):
             # PatientName = request.GET.get('SelectedPat', None)
             PatientName = request.POST['selectedPatient']
             try: 
-                selectedPatient = Patient.objects.get(name = PatientName)
+                selectedPatient = Patient.objects.get(name = PatientName, doctorname = request.session['Name'])
                 selectedPatientID = selectedPatient.pk
                 try:
                     appointmentData = Appointment.objects.filter(patientPres = selectedPatientID).order_by('date')
@@ -1732,7 +1732,9 @@ def searchAppointments(request):
                                                                 Q(time__icontains = searchQuery) |
                                                                 Q(subject__icontains = searchQuery)) & Q(appointmentdoctor = request.session['Name']))
             context = {
-                'searchAppointmentPatients' : searchFilterAppointments.order_by('appointmentpatient')
+                'searchAppointmentPatients' : searchFilterAppointments.order_by('appointmentpatient'),
+                'searchQuery' : searchQuery,
+                
             }
 
             response = render(request, "HealthCentre/appointmentsPortal.html", context)
@@ -1740,7 +1742,8 @@ def searchAppointments(request):
         if  searchDate != '':
             searchFiterDate = Appointment.objects.filter(Q(date__icontains = searchDate))
             context ={
-                'searchAppointmentPatients': searchFiterDate.order_by('appointmentpatient')
+                'searchAppointmentPatients': searchFiterDate.order_by('appointmentpatient'),
+                'searchDate' : searchDate
             }
             
             response = render(request, "HealthCentre/appointmentsPortal.html", context)
@@ -1763,7 +1766,8 @@ def searchPrescriptions(request):
             searchFilterPrescriptions = Prescription.objects.filter(Q(prescribingPatient__icontains = searchQuery) & Q(prescribingDoctor = request.session['Name'] ))
 
             context = {
-                'searchPrescriptionPatients' : searchFilterPrescriptions.order_by('prescribingPatient')
+                'searchPrescriptionPatients' : searchFilterPrescriptions.order_by('prescribingPatient'),
+                'searchQuery' : searchQuery
             }
 
             response = render(request, "HealthCentre/prescriptionPortal.html", context)
@@ -1773,13 +1777,14 @@ def searchPrescriptions(request):
             searchFiterDate = Prescription.objects.filter(Q(timestamp__icontains = searchDate))
 
             context ={
-                'searchPrescriptionPatients': searchFiterDate.order_by('prescribingPatient')
+                'searchPrescriptionPatients': searchFiterDate.order_by('prescribingPatient'),
+                'searchDate' : searchDate
             }
 
             response = render(request, "HealthCentre/prescriptionPortal.html", context)
             return responseHeadersModifier(response)
         else:
-            response = response = HttpResponseRedirect(reverse('login'))
+            response = response = HttpResponseRedirect(reverse('yourPrescriptions'))
             return responseHeadersModifier(response)
 
 
@@ -2009,6 +2014,7 @@ def searchPatients(request):
             context = {
                 'editPat' : searchFilterPatients.order_by('name'),
                 "editMedicine" : Medicine.objects.all(),
+                'searchQuery' : searchQuery
             }
 
         
@@ -2017,9 +2023,6 @@ def searchPatients(request):
         else:
             response = response = HttpResponseRedirect(reverse('patMed'))
             return responseHeadersModifier(response)
-
-
-    
 
 def searchMedicine(request):
     if request.method == 'GET':
@@ -2035,8 +2038,8 @@ def searchMedicine(request):
             context = {
                 'editMedicine' : searchFilterMedicine.order_by('medicinename'),
                 "editPat" : doctorSpecific,
+                'searchQuery' : searchQuery
             }
-
             response = render(request, "HealthCentre/medicinePatientPortal.html", context)
             return responseHeadersModifier(response)
         else:

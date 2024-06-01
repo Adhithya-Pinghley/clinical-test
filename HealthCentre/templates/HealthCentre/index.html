@@ -315,12 +315,12 @@
                             var $listDate = $('<div class="datalist listDate"></div>');
                             var $listPatient = $('<div class="datalist listPatient"></div>');
                             var $listNotes = $('<div class="datalist listNotes"></div>');
-                            var $isCompleted = $("<button class='button' onclick = 'completeAppoint()'>Completed</button>");
+                            var $isCompleted = $('<div class="datalist listNotes"><button class="button" onclick = "completeAppoint()">Completed</button></div>');
                             $listTime.text(formattedListTime);
                             $listDate.text(formattedListDate);
                             $listPatient.text(lastAppoint.fields.appointmentpatient);
                             $listNotes.text(lastAppoint.fields.notes);
-                            $listContent.append($listTime, $listDate, $listPatient, $listNotes);
+                            $listContent.append($listTime, $listDate, $listPatient, $listNotes, $isCompleted);
                             $listItem.append($listContent);
                             console.log($listItem);
                             LastAppointmentList.appendChild($listItem[0]);

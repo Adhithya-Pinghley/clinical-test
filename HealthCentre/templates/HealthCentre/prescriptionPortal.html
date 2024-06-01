@@ -44,10 +44,10 @@ Clinical-Prescriptions
       <div class="form-group search-bar row gx-2">
         <div class="col">
           <input name="searchQuery" class="inputBox" type="search" placeholder="Search Prescriptions"
-            aria-label="Search">
+            value = '{{ searchQuery }}' aria-label="Search">
         </div>
         <div class="col">
-          <input id="searchByDate" class="inputBox" name="searchByDate" type="date">
+          <input id="searchByDate" class="inputBox" name="searchByDate" type="date" value = '{{ searchDate }}'>
         </div>
         <button class="form-group inputBox " type="submit">Search</button>
         <!-- btn btn-outline-success my-2 my-sm-0 -->

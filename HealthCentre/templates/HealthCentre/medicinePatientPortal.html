@@ -149,22 +149,20 @@ NDC-Prescription
     </form>
 
     <br>
-    <div class = "hideout emojilay " id="emojiContainer" >
-        <img src = "{% static 'HealthCentre\images\UseMeEmoji.gif' %}">
-    </div>
+    
 
       <div class="form-inline" >
         <form method="post" action="{% url 'searchPatients' %}">
           {% csrf_token %}
           <div class = "form-group">
-            <input name = "searchQuery" class="form-group" type="search" placeholder="Search Patients" aria-label="Search">
+            <input name = "searchQuery" class="form-group" type="search" placeholder="Search Patients" value = "{{ searchQuery }}" aria-label="Search">
             <button class="form-group" type="submit">Search</button>
           </div>
         </form>
         <form style = "position: absolute; right: 3%;" method="post" action="{% url 'searchMedicine' %}">
           {% csrf_token %}
           <div class="form-group">
-            <input name = "searchQuery" class="form-group" type="search" placeholder="Search Medicine" aria-label="Search">
+            <input name = "searchQuery" class="form-group" type="search" placeholder="Search Medicine" value = "{{ searchQuery }}" aria-label="Search">
             <button class="form-group" type="submit">Search</button>
           </div>
           

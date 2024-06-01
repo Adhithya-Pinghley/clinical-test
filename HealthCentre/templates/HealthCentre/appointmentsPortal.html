@@ -36,12 +36,12 @@ Clinical-Appointments
       {% csrf_token %}
       <div class="form-group search-bar row gx-2">
         <div class="col">
-        <input name = "searchQuery" class="inputBox" type="search" placeholder="Search Appointments" aria-label="Search">
+        <input name = "searchQuery" class="inputBox" type="search" placeholder="Search Appointments" value ="{{ searchQuery }}" aria-label="Search">
 
         
       </div>
       <div class="col">
-        <input id ="searchByDate" name="searchByDate" type="date" class="inputBox">
+        <input id ="searchByDate" name="searchByDate" type="date" value = "{{ searchDate }}" class="inputBox">
       </div>
       <button class="form-group inputBox" type="submit">Search</button>
 
