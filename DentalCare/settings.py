@@ -31,6 +31,14 @@ DEBUG = False
 ALLOWED_HOSTS = ['*', 'https://clinical-prod-dev-fzgh.2.sg-1.fl0.io/register']
 # , 'https://9123-117-254-38-13.ngrok-free.app']
 
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True  # or False depending on your SMTP settings
+EMAIL_HOST_USER = 'clinicalotp@gmail.com'
+EMAIL_HOST_PASSWORD = 'bgttmqprsxenpwgn'
+DEFAULT_FROM_EMAIL = 'clinicalotp@gmail.com'
+
 globalVar = ""
 globalDocName = ""
 wpIsConnected = False

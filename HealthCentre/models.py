@@ -93,6 +93,7 @@ class Appointment(models.Model):
     appointmentpatient = models.CharField(max_length=2000, default = "")
     appointmentdoctor  = models.CharField(max_length=2000, default= "")
     AppointmentTimeStamp = models.DateTimeField(default = timezone.now, db_column = 'appointmenttimestamp')#auto_now_add = True 
+    completed = models.BooleanField(default = False)
 #auto_now_add = True, 
     def __str__(self):
         return "\nDoctorId :" + str(self.doctorPres) + "\nPatientId :" + str(self.patientPres) + "\nDoctor :" + str(self.appointmentdoctor) + "\n\nPatient" + str(self.appointmentpatient) +"\n\nDate :"+ str(self.date) + "\n\nTime :" + str(self.time) + "\n\nSubject :" + str(self.subject) + "\n\nnotes :" + str(self.notes) + "\n\n"

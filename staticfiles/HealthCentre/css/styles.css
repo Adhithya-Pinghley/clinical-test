@@ -3,7 +3,7 @@ body {
 }
 
 .hideout {
-    display: none;
+    visibility: hidden;
 }
 
 .makeItFlex {
@@ -19,7 +19,7 @@ body {
 }
 
 .hidein {
-    display: block;
+    visibility: visible;
 }
 
 .navstyle {
@@ -278,10 +278,10 @@ body {
 
 
 
-.hidein {
+/* .hidein {
     visibility: none;
     display: none;
-}
+} */
 
 
 

@@ -32,6 +32,89 @@ from django.forms.models import model_to_dict
 if ('runserver' in sys.argv):
     from .Whatsapptestfile import whatsappApi, openWhatsapp, whatsappApiEdit, whatsappMedia, whatsappApiDoc
     # import Whatsapptestfile
+from django.core.mail import send_mail
+import random
+
+def generate_otp():
+    return str(random.randint(100000, 999999))
+
+def send_otp_via_email(user, otp):
+    send_mail(
+        'Your OTP Code',
+        f'Your OTP code is {otp}',
+        settings.DEFAULT_FROM_EMAIL,
+        [user.email],
+    )
+
+def passwordResetReq(request):
+    if request.method == 'POST':
+        email = request.POST.get('resetemail')
+        try:
+            user = Doctor.objects.get(email=email)
+            otp = str(random.randint(100000, 999999))
+            request.session['otp'] = otp
+            request.session['otpUserId'] = user.id
+            request.session['otpExpiry'] = timezone.now().timestamp() + 600  # OTP valid for 10 minutes
+            # send_otp_via_email(user, otp)
+            # send_mail(
+            #     'Your OTP Code',
+            #     f'Your OTP code is {otp}',
+            #     settings.DEFAULT_FROM_EMAIL,
+            #     [user.email],
+            # )
+            send_mail(
+                'Password Reset OTP',
+                f'Your OTP for password reset is: {otp}',
+                settings.EMAIL_HOST_USER,
+                [email],
+                fail_silently=False,
+            )
+            return redirect('verifyOtp')
+        except Doctor.DoesNotExist:
+            # Handle case where the user does not exist
+            message = 'this email is not registered, please provide a registered email id'
+            context = {
+                'message' : message
+            }
+            return render(request, 'HealthCentre/passwordResetReq.html', context)
+    context = {
+                'message' : ""
+            }
+    return render(request, 'HealthCentre/passwordResetReq.html', context)
+
+def verifyOtp(request):
+    if request.method == 'POST':
+        email = request.POST.get('resetemail')
+        otp = request.POST.get('otp')
+        try:
+            user = Doctor.objects.get(email=email)
+            sessionOtp = request.session.get('otp')
+            sessionOtpUserId = request.session.get('otpUserId')
+            sessionOtpExpiry = request.session.get('otpExpiry')
+
+            if user.id == sessionOtpUserId and otp == sessionOtp and timezone.now().timestamp() < sessionOtpExpiry:
+                return redirect('resetPassword', user_id=user.id)
+            else:
+                # Handle invalid or expired OTP
+                pass
+        except Doctor.DoesNotExist:
+            # Handle case where the user does not exist
+            pass
+    return render(request, 'HealthCentre/passwordResetReq.html')
+
+def resetPassword(request, pk):
+    if request.method == 'POST':
+        newPassword = request.POST.get('newPassword')
+        confirmPassword = request.POST.get('confirmPassword')
+        if newPassword == confirmPassword:
+            user = Doctor.objects.get(id=pk)
+            user.set_password(newPassword)
+            user.save()
+            return redirect('login')
+        else:
+            # Handle password mismatch
+            pass
+    return render(request, 'HealthCentre/passwordResetReq.html')
 
 renderedHTML = " "
 def openwhatsapp(request):
@@ -178,9 +261,11 @@ def index(request):
         currentDate = datetime.now().date()
         curTime = datetime.now().time()
         docName = request.session['Name']
-        currentAppointments = Appointment.objects.filter(date__gte=currentDate, time__gt= curTime, appointmentdoctor = docName).order_by('time')
+        docID = request.session['docId']
+        currentAppointments = Appointment.objects.filter(date__gte=currentDate, time__gt= curTime, doctorPres_id = docID).order_by('time').order_by('date') #, appointmentdoctor = docName
         nextFirstAppoint = None
         nextAppointmentData = []
+        
         # for currentAppointment in currentAppointments:
         #     appointDate = currentAppointment.date
         #     appointTime = currentAppointment.time
@@ -206,70 +291,108 @@ def index(request):
         return render(request, "HealthCentre/index.html", context)
     
 def updateDashboard(request):
-    # if request.GET.get('currentAppointment') == None:
+        # if request.GET.get('id') != None and request.GET.get('status') == True and request.method == 'GET':
+        if request.method == 'POST' and request.POST.get('status') == 'true':
+            appointId = request.POST.get('id')
+            appointStatus = request.POST.get('status')
+            appointmentObj = Appointment.objects.get(id=appointId)
+            appointmentObj.completed = (appointStatus == 'true')
+            appointmentObj.save()
+        if request.method == 'POST' and request.POST.get('status') == 'false':
+            appointId = request.POST.get('id')
+            appointStatus = request.POST.get('status')
+            appointmentObj = Appointment.objects.get(id=appointId)
+            if appointStatus == 'false':
+                appointmentObj.completed = False
+            appointmentObj.save()
         currentDate = datetime.now().date()
+        yestDate = currentDate - timedelta(days=1)
         curTime = datetime.now().time()
+        currTimestamp = datetime.now()
         docName = request.session['Name']
-        currentAppointments = Appointment.objects.filter(date__gte=currentDate, time__gte= curTime, appointmentdoctor = docName).order_by('time')
-        incompleteAppointments = Appointment.objects.filter(date__lte=currentDate, time__lte= curTime, appointmentdoctor = docName).order_by('time')
+        docID = request.session['docId']
+        currentAppointments = Appointment.objects.filter(((Q(date__gte=currentDate) & Q(time__gte=curTime)) | (Q(date__gt=currentDate) & (Q(time__gte=curTime) | Q(time__lte=curTime)))), doctorPres_id = docID).order_by('time').order_by('date') #, appointmentdoctor = docName & Q(time__gte= curTime)
+        incompleteAppointments = Appointment.objects.filter(((Q(date=currentDate) & Q(time__lt= curTime)) | (Q(date__lt= currentDate) & (Q(time__gte= curTime) | Q(time__lte=curTime)))), doctorPres_id = docID, completed=False).order_by('time') #, appointmentdoctor = docName & Q(time__lt= curTime)
+        completedAppointments = Appointment.objects.filter( doctorPres_id = docID, completed = True).order_by('time') #, appointmentdoctor = docName & Q(time__lt= curTime)
+        # YestincompleteAppointments = Appointment.objects.filter(date__lt=currentDate, doctorPres_id = docID, completed=False).order_by('time') #, appointmentdoctor = docName & Q(time__lt= curTime)
+        PatientList = Patient.objects.filter(doctorid__id = docID)
         nextAppointmentData = []
-        # for currentAppointment in currentAppointments:
-        #     appointDate = currentAppointment.date
-        #     appointTime = currentAppointment.time
-        #     appointPatient = currentAppointment.appointmentpatient
-        #     appointNotes = currentAppointment.notes
-        #     nextAppointmentData.append({
-        #         'appointDate' : appointDate,
-        #         'appointTime' : appointTime,
-        #         'appointPatient' : appointPatient,
-        #         'appointNotes' : appointNotes,
-                
-        #     })
-        if currentAppointments:
+        YestincompleteAppointments = []
+        data = {}
+        if currentAppointments.exists():
             
             nextFirstAppoint = currentAppointments.first()
             nextAppointmentData = serialize('json' ,currentAppointments[1:])
+            # loadednextAppointmentData = json.loads(nextAppointmentData)
             status = "There are few more appointments today.."
-            nextFirstAppointData = serialize('json', [nextFirstAppoint])[1:-1] if nextFirstAppoint else None
-            data = {
-                'lastIncompleteAppoint' : None,
-                'nextFirstAppoint' : json.loads(nextFirstAppointData),
-                'curAppoints' : json.loads(nextAppointmentData),
+            nextFirstAppointData = serialize('json', [nextFirstAppoint])[1:-1] if nextFirstAppoint else None    
+            # loadednextFirstAppointData = json.loads(nextFirstAppointData)    
+            data.update({
+                # 'lastIncompleteAppoint' : None,
+                'nextFirstAppoint' : json.loads(nextFirstAppointData), #loadednextFirstAppointData,
+                'curAppoints' : json.loads(nextAppointmentData), #loadednextAppointmentData,
                 'status' : status
-            }
+            })
             
         else:    
             
             status = "There are no more appointments today.!."
-            data = {
-                'lastIncompleteAppoint' : None,
+            data.update({
+                
                 'nextFirstAppoint' : None,
                 'curAppoints' : None,
                'status' : status
-            }
-        if incompleteAppointments:
-            latestIncompleteAppoint = incompleteAppointments.first()
-            
-            lastIncompleteAppoint = serialize('json',incompleteAppointments)
-            
-            data = {
-                'lastIncompleteAppoint' : json.loads(lastIncompleteAppoint),
-                'nextFirstAppoint' : None,
-                'curAppoints' : None,
-                'status' : None
-            }
-            
-            
+            })
+        if incompleteAppointments.exists() or YestincompleteAppointments:
+            prevlastIncompleteAppoint = '[]'
+            yestlastIncompleteAppoint = '[]'
+            # latestIncompleteAppoint = incompleteAppointments.first()
+            if incompleteAppointments:
+                incompleteAppointmentsWithDate = incompleteAppointments.filter(time__lt = curTime)
+                prevlastIncompleteAppoint = serialize('json',incompleteAppointments)
+                lastIncompleteAppoint = serialize('json',incompleteAppointments)
+            if YestincompleteAppointments:
+                yestlastIncompleteAppoint = serialize('json',YestincompleteAppointments)
+                    # lastIncompleteAppoint.add(yestlastIncompleteAppoint)
+            lastIncompleteAppoint = (json.loads(prevlastIncompleteAppoint)) + (json.loads(yestlastIncompleteAppoint))
+                
+            data.update({
+                'lastIncompleteAppoint' : lastIncompleteAppoint,
+                # 'nextFirstAppoint' : None,
+                # 'curAppoints' : None,
+                # 'status' : None
+            })
+        else:
+            data.update({
+                'lastIncompleteAppoint' : [],
+                # 'nextFirstAppoint' : None,
+                # 'curAppoints' : None,
+                # 'status' : None
+            })
+        if completedAppointments.exists():
+            appointCompleted = serialize('json' ,completedAppointments)
+            appointCompletedSerialized = json.loads(appointCompleted)
+            data.update({
+                'completedAppoint' : appointCompletedSerialized
+            })
+        else:
+            data.update({
+                'completedAppoint' : '[]'
+            })
+        if PatientList:
+            patientListSer = serialize('json', PatientList)
+            patientListLoaded = json.loads(patientListSer)
+            data.update({
+                'patientList' : patientListLoaded
+            })
+        if request.POST.get('id') is not None:
         
-        
-        # print(data)
-        # data = dashAppointData
-    # Editing response headers so as to ignore cached versions of pages
-        # response = render(request,"HealthCentre/index.html")
+            patientId = request.POST.get('id')
+            
+            return JsonResponse({'redirect_url': 'createTimeline'})
+            
         return JsonResponse(data)
-        # return render(request, "HealthCentre/index.html", context)
-        # return render(request,"HealthCentre/index.html")
-
+        
 def register(request):
     """ Function for registering a student into the portal. """
 
@@ -427,7 +550,7 @@ def register(request):
 
 def doctors(request):
     """Function to send information about the doctors available to the user. """
-
+    request.session['docEdit'] = False
     # Storing doctors available in the context variable
     context = {
         "doctors" : Doctor.objects.all()
@@ -437,11 +560,49 @@ def doctors(request):
     response = render(request,"HealthCentre/contactus.html",context)
     return responseHeadersModifier(response)
 
+def editDocDetails(request, pk):
+    request.session['docEdit'] = True
+    docEditBool = request.session['docEdit']
+    docid = request.session['docId']
+    doctor = get_object_or_404(Doctor, id=pk)
+    if request.method == "POST":
+        request.session['docEdit'] = False
+        request.session['Name'] = request.POST.get('name', doctor.name)
+        appointDoc = Appointment.objects.filter(appointmentdoctor = doctor.name)
+        for appointdoc in appointDoc:
+            appointdoc.appointmentdoctor = request.POST['name']
+            appointdoc.save()
+        prescDoc = Prescription.objects.filter(prescribingDoctor = doctor.name)
+        for prescdoc in prescDoc:
+            prescdoc.prescribingDoctor = request.POST['name']
+            prescdoc.save()
+        patientDoc = Patient.objects.filter(doctorname = doctor.name)
+        for patientdoc in patientDoc:
+            patientdoc.doctorname = request.POST['name']
+            patientdoc.save()
+        doctor.name = request.POST.get('name', doctor.name)
+        doctor.clinicName = request.POST.get('clinicName', doctor.clinicName)
+        doctor.educationalQualification = request.POST.get('educationalQualification', doctor.educationalQualification)
+        doctor.specialization = request.POST.get('specialization', doctor.specialization)
+        doctor.address = request.POST.get('address', doctor.address)
+        doctor.email = request.POST.get('email', doctor.email)
+        doctor.contactNumber = request.POST.get('contactNumber', doctor.contactNumber)
+        doctor.save()
+        
+        return redirect('doctors')
+    
+    doctorSpecific = Doctor.objects.filter(pk=request.session['docId']).order_by('name')
+    context = {
+        "doctorsEdit": doctorSpecific
+    }
+    response = render(request, "HealthCentre/contactus.html", context)
+    return responseHeadersModifier(response)
+
 def yourPrescriptions(request):
     if request.method == "GET":
         doctor = Doctor.objects.get(emailHash = request.session['userEmail'])
         records = doctor.doctorRecords.all()
-        doctorSpecific = Prescription.objects.filter(prescribingDoctor = request.session['Name']).order_by('timestamp')
+        doctorSpecific = Prescription.objects.filter(doctor_id = request.session['docId']).order_by('timestamp') # 'Name' changed to 'docId'
         context = {
                     "message" : "Successfully Logged In.",
                     "isAuthenticated" : True,
@@ -472,7 +633,7 @@ def login(request):
                 numberNewPendingPrescriptions = doctor.doctorRecords.aggregate(newnewPendingPrescriptions = Count('pk', filter =( Q(isNew = True) & Q(isCompleted = False) ) ))['newnewPendingPrescriptions']
                 # Storing the same inside the session variables
                 request.session['numberNewPrescriptions'] = numberNewPendingPrescriptions
-                doctorSpecific = Prescription.objects.filter(prescribingDoctor = request.session['Name']).order_by('timestamp')
+                doctorSpecific = Prescription.objects.filter(doctor_id = request.session['docId']).order_by('timestamp')
                 # request.session['qrcode'] = generateqr
                 # Storing the required information inside the context variable
                 context = {
@@ -595,6 +756,7 @@ def login(request):
                 IDofDoc = doctor.pk
                 docId = Doctor.objects.get(id = IDofDoc)
                 request.session['Name'] = docId.name
+                request.session['docId'] = docId.pk
                 global G_docName
                 docNameCommon = request.session['Name']
                 G_docName = str(docNameCommon)
@@ -763,7 +925,7 @@ def doctorappointmentsfalse(request):
             # request.session['CreatenewAppointment'] = False
             doctor = Doctor.objects.get(emailHash = request.session['userEmail'])
             records = doctor.doctorRecords.all()
-            doctorSpecific = Appointment.objects.filter(appointmentdoctor = request.session['Name']).order_by('-date')
+            doctorSpecific = Appointment.objects.filter(doctorPres_id = request.session['docId']).order_by('-date')
             # Getting the count of the new prescriptions pending
             numberNewPendingPrescriptions = doctor.doctorRecords.aggregate(newnewPendingPrescriptions = Count('pk', filter =( Q(isNew = True) & Q(isCompleted = False) ) ))['newnewPendingPrescriptions']
 
@@ -794,7 +956,7 @@ def doctorappointments(request):
         date = range(1, 32)
         month = range(1, 13)
         year = range(int(datetime.now().year), 2099)
-        doctorSpecific = Patient.objects.filter(doctorname = request.session['Name']).order_by('name')
+        doctorSpecific = Patient.objects.filter(doctorid_id = request.session['docId']).order_by('name')
         context = {'form': form, 
                     'model': model,
                     'hours': hour,
@@ -951,6 +1113,7 @@ def editAppointments(request, pk):
         appointObject.notes = request.POST['AppointmentDescription']
         appointObject.appointmentdoctor = request.session['Name']
         appointObject.subject = "subject"
+        appointObject.completed = False
         appointObject.save()
         patientDetails = Patient.objects.get(name=appointObject.appointmentpatient)
         patientNumber = patientDetails.contactNumber
@@ -1147,7 +1310,7 @@ def doctorprofile(request):
         
         if request.GET.get('noofdays') == None and request.GET.get('SelectedMed') == None and request.GET.get('SelectedPat') == None and request.GET.get('SelectedSess') == None:
             docn = request.session['Name']
-            doctorSpecific = Patient.objects.filter(doctorname = request.session['Name']).order_by('name')
+            doctorSpecific = Patient.objects.filter(doctorid_id = request.session['docId']).order_by('name')
             clickedOnAddRow = True
             medicineIsSelected = True
             sessionIsSelected = True
@@ -1284,7 +1447,7 @@ def doctorprofile(request):
                 prescription.medicine.set(selectedMedicines)
                 prescription.MornAftNight.set(selectedSessions)
                 wpnumber = patientObj.contactNumber
-                doctorSpecific = Prescription.objects.filter(prescribingDoctor = request.session['Name']).order_by('timestamp')
+                doctorSpecific = Prescription.objects.filter(doctor_id = request.session['docId']).order_by('timestamp')
                 docName = request.session['Name']
                 Todaysdate = date.today()
                 global dummyBoolean
@@ -1342,48 +1505,90 @@ def uploadImage(request):
             response = render(request, 'HealthCentre/NewPrescription.html',context)
             return responseHeadersModifier(response)
 
+def createTimelineDirect(request, pk):
+    # if request.session == 'GET':
+        patientobj = Patient.objects.get(id = pk, doctorid_id = request.session['docId'] )
+        PatientName = patientobj.name #request.POST['selectedPatient']
+        try: 
+            
+            selectedPatient = Patient.objects.get(name = PatientName, doctorname = request.session['Name'])
+            selectedPatientID = selectedPatient.pk
+            try:
+                appointmentData = Appointment.objects.filter(patientPres = selectedPatientID).order_by('date')
+                # serializedData = serialize('json', appointmentData) 
+            except Appointment.DoesNotExist:
+                for singleappointmentData in appointmentData:
+                    singleappointmentData = None    
+            
+            try:
+                prescriptionData = Prescription.objects.filter(patient_id = selectedPatientID).order_by('timestamp')
+            except Prescription.DoesNotExist :
+                for singleprescription in prescriptionData:
+                    singleprescription = None
+            doctorSpecific = Patient.objects.filter(doctorid_id = request.session['docId']).order_by('name')
+            context = {
+                "patients" : doctorSpecific,
+                "appointmentData" : appointmentData,
+                "prescriptionData" : prescriptionData,     
+                "patientName" : selectedPatient.name               
+            }
+            response = render(request, "HealthCentre/timeline.html", context)
+            
+            return responseHeadersModifier(response)
+            # return JsonResponse(data)
+        except Patient.DoesNotExist:
+            return JsonResponse({'error': 'Patient not found'}, status=404)
+        
 def createTimeline(request):
+    
     if request.method == 'GET':
 
         if request.GET.get('SelectedPat') == None:
-                doctorSpecific = Patient.objects.filter(doctorname = request.session['Name']).order_by('name')
+                doctorSpecific = Patient.objects.filter(doctorid_id = request.session['docId']).order_by('name')
                 context = {
                         "patients" : doctorSpecific,
                         "patientName" : ""
                         }
                 response = render(request, "HealthCentre/timeline.html", context)
                 return responseHeadersModifier(response)
-    if request.method == 'POST':
-            # PatientName = request.GET.get('SelectedPat', None)
-            PatientName = request.POST['selectedPatient']
-            try: 
-                selectedPatient = Patient.objects.get(name = PatientName, doctorname = request.session['Name'])
-                selectedPatientID = selectedPatient.pk
-                try:
-                    appointmentData = Appointment.objects.filter(patientPres = selectedPatientID).order_by('date')
-                    # serializedData = serialize('json', appointmentData) 
-                except Appointment.DoesNotExist:
-                    for singleappointmentData in appointmentData:
-                        singleappointmentData = None    
-                
-                try:
-                    prescriptionData = Prescription.objects.filter(patient_id = selectedPatientID).order_by('timestamp')
-                except Prescription.DoesNotExist :
-                    for singleprescription in prescriptionData:
-                        singleprescription = None
-                doctorSpecific = Patient.objects.filter(doctorname = request.session['Name']).order_by('name')
-                context = {
-                    "patients" : doctorSpecific,
-                    "appointmentData" : appointmentData,
-                    "prescriptionData" : prescriptionData,     
-                    "patientName" : selectedPatient.name               
-                }
-                response = render(request, "HealthCentre/timeline.html", context)
-                return responseHeadersModifier(response)
-                # return JsonResponse(data)
-            except Patient.DoesNotExist:
-                return JsonResponse({'error': 'Patient not found'}, status=404)
         
+
+        # PatientName = request.GET.get('SelectedPat', None)
+
+    if request.method == 'POST':
+        
+        
+        PatientName = request.POST['selectedPatient']
+        try: 
+            
+            selectedPatient = Patient.objects.get(name = PatientName, doctorname = request.session['Name'])
+            selectedPatientID = selectedPatient.pk
+            try:
+                appointmentData = Appointment.objects.filter(patientPres = selectedPatientID).order_by('date')
+                # serializedData = serialize('json', appointmentData) 
+            except Appointment.DoesNotExist:
+                for singleappointmentData in appointmentData:
+                    singleappointmentData = None    
+            
+            try:
+                prescriptionData = Prescription.objects.filter(patient_id = selectedPatientID).order_by('timestamp')
+            except Prescription.DoesNotExist :
+                for singleprescription in prescriptionData:
+                    singleprescription = None
+            doctorSpecific = Patient.objects.filter(doctorid_id = request.session['docId']).order_by('name')
+            context = {
+                "patients" : doctorSpecific,
+                "appointmentData" : appointmentData,
+                "prescriptionData" : prescriptionData,     
+                "patientName" : selectedPatient.name               
+            }
+            response = render(request, "HealthCentre/timeline.html", context)
+            
+            return responseHeadersModifier(response)
+            # return JsonResponse(data)
+        except Patient.DoesNotExist:
+            return JsonResponse({'error': 'Patient not found'}, status=404)
+    
 
 def deleteprescription(request, pk):
     # request.session['deleteAppointment'] = True
@@ -1542,9 +1747,11 @@ def requestSessionInitializedChecker(request):
     except:
         # Initialize request variables if they don't exist
         request.session['isDoctor'] = ""
+        request.session['docEdit'] = False
         request.session['isLoggedIn'] = False
         request.session['userEmail'] = ""
         request.session['Name'] = ""
+        request.session['docId'] = 0
         request.session['numberNewPrescriptions'] = ""
         request.session['writeNewPrescription'] = False
         request.session['CreatenewAppointment'] = False
@@ -1881,7 +2088,7 @@ def patMed(request):
     if request.method == "GET":
         request.session['patientMedicineEdit'] = False
         # patient = Patient.objects.get(id)
-        doctorSpecific = Patient.objects.filter(doctorname = request.session['Name']).order_by('name')
+        doctorSpecific = Patient.objects.filter(doctorid_id = request.session['docId']).order_by('name')
         context = {
             "editPat" : doctorSpecific,
             "editMedicine" : Medicine.objects.all().order_by('medicinename'),
@@ -1901,7 +2108,7 @@ def editPatientMed(request,pk):
         patientObject.email = request.POST['userEmail']
         patientObject.rollNumber = request.POST['userRollNo']
         patientObject.passwordHash = request.POST['userPassword']
-        doctorSpecific = Patient.objects.filter(doctorname = request.session['Name']).order_by('name')
+        doctorSpecific = Patient.objects.filter(doctorid_id = request.session['docId']).order_by('name')
         patientObject.save()   
         context = {
                "editPat" : doctorSpecific,
@@ -1917,7 +2124,7 @@ def editPatientMed(request,pk):
     patientEmail = patientObj.email
     patientRoll = patientObj.rollNumber
     patientSex = patientObj.passwordHash
-    doctorSpecific = Patient.objects.filter(doctorname = request.session['Name']).order_by('name')     
+    doctorSpecific = Patient.objects.filter(doctorid_id = request.session['docId']).order_by('name')     
     context= {
         "userFirstNam" :patientName,
         "userAddress" : patientAddr,
@@ -1936,7 +2143,7 @@ def deletepatientDetails(request, pk):
     request.session['deletepatientDetails'] = True
     delpatObj = Patient.objects.get(id=pk)
     delpatObj.delete()
-    doctorSpecific = Patient.objects.filter(doctorname = request.session['Name']).order_by('name')
+    doctorSpecific = Patient.objects.filter(doctorid_id = request.session['docId']).order_by('name')
     context = {
     
     "delpatObj" : delpatObj,
@@ -1957,7 +2164,7 @@ def medicineEdit(request,pk):
         medicineObject.morning = '1'
         medicineObject.afternoon = '1'
         medicineObject.night = '1'
-        doctorSpecific = Patient.objects.filter(doctorname = request.session['Name']).order_by('name')
+        doctorSpecific = Patient.objects.filter(doctorid_id = request.session['docId']).order_by('name')
         medicineObject.save()   
         context = {
                 "editPat" : doctorSpecific,
@@ -1969,7 +2176,7 @@ def medicineEdit(request,pk):
     medicineObj = Medicine.objects.get(id=pk)
     medicineName = medicineObj.medicinename    
     befAftr = medicineObj.beforeafter
-    doctorSpecific = Patient.objects.filter(doctorname = request.session['Name']).order_by('name')
+    doctorSpecific = Patient.objects.filter(doctorid_id = request.session['docId']).order_by('name')
     context= {
        "medicineName" : medicineName,
        "befAftr" : befAftr,
@@ -1984,7 +2191,7 @@ def deletemedicineDetails(request, pk):
     request.session['deletemedicineDetails'] = True
     delmedObj = Medicine.objects.get(id=pk)
     delmedObj.delete()
-    doctorSpecific = Patient.objects.filter(doctorname = request.session['Name']).order_by('name')
+    doctorSpecific = Patient.objects.filter(doctorid_id = request.session['docId']).order_by('name')
     
     context = {
     
@@ -2002,7 +2209,7 @@ def searchPatients(request):
         return responseHeadersModifier(response)
     if request.method == 'POST':
         searchQuery = request.POST["searchQuery"]
-        doctorSpecific = Patient.objects.filter(doctorname = request.session['Name']).order_by('name')
+        doctorSpecific = Patient.objects.filter(doctorid_id = request.session['docId']).order_by('name')
         if searchQuery != '':
 
             searchFilterPatients = Patient.objects.filter((Q(name__icontains = searchQuery) |
@@ -2030,7 +2237,7 @@ def searchMedicine(request):
         return responseHeadersModifier(response)
     if request.method == 'POST':
         searchQuery = request.POST["searchQuery"]
-        doctorSpecific = Patient.objects.filter(doctorname = request.session['Name']).order_by('name')
+        doctorSpecific = Patient.objects.filter(doctorid_id = request.session['docId']).order_by('name')
         if searchQuery != '':
 
             searchFilterMedicine = Medicine.objects.filter(Q(medicinename__icontains = searchQuery) |

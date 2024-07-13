@@ -13,14 +13,16 @@ Clinical-Your details
 
 {% block body %}
     <br>
+    {% if not request.session.docEdit %}
     {% for doctor in doctors %}
     {% if doctor.name == request.session.Name %}
+    <a class="button" href ="{% url 'editDocDetails' doctor.id %}">Edit</a>
     <div class="Backpanel" >
         <div class="container">
             <div class = "form-inline">
-              <h4>Name :  &nbsp;&nbsp;&nbsp;</h4> 
+              <h4>Name :  &nbsp;&nbsp;&nbsp;</h4>  
               <br>
-              <h5 style = "color: black">{{ doctor.name }}</h5>
+              <h5 style = "color: black">{{ doctor.name }}</h5> 
             </div>
               {% comment %} class="btn btn-info" {% endcomment %}
               <br>
@@ -74,4 +76,56 @@ Clinical-Your details
     </div>
         {% endif %}
         {% endfor %}
+        {% endif %}
+
+        <br>
+    {% if request.session.docEdit %}
+    {% for editdoctor in doctorsEdit %}
+    {% if editdoctor.name == request.session.Name %}
+
+    <div id="editDoctorForm">
+        <form method="post" action="{% url 'editDocDetails' editdoctor.id %}">
+          {% csrf_token %}
+          <div class="form-inline">
+            <label for="name">Name: &nbsp;&nbsp;&nbsp;</label>
+            <input type="text" id="name" name="name" value="{{ editdoctor.name }}">
+          </div>
+          <br>
+          <div class="form-inline">
+            <label for="clinicName">Clinic Name: &nbsp;&nbsp;&nbsp;</label>
+            <input type="text" id="clinicName" name="clinicName" value="{{ editdoctor.clinicName }}">
+          </div>
+          <br>
+          <div class="form-inline">
+            <label for="educationalQualification">Qualification: &nbsp;&nbsp;&nbsp;</label>
+            <input type="text" id="educationalQualification" name="educationalQualification" value="{{ editdoctor.educationalQualification }}">
+          </div>
+          <br>
+          <div class="form-inline">
+            <label for="specialization">Specialization: &nbsp;&nbsp;&nbsp;</label>
+            <input type="text" id="specialization" name="specialization" value="{{ editdoctor.specialization }}">
+          </div>
+          <br>
+          <div class="form-inline">
+            <label for="address">Address: &nbsp;&nbsp;&nbsp;</label>
+            <input type="text" id="address" name="address" value="{{ editdoctor.address }}">
+          </div>
+          <br>
+          <div class="form-inline">
+            <label for="email">Email: &nbsp;&nbsp;&nbsp;</label>
+            <input type="email" id="email" name="email" value="{{ editdoctor.email }}">
+          </div>
+          <br>
+          <div class="form-inline">
+            <label for="contactNumber">Contact Number: &nbsp;&nbsp;&nbsp;</label>
+            <input type="text" id="contactNumber" name="contactNumber" value="{{ editdoctor.contactNumber }}">
+          </div>
+          <br>
+          <button type="submit" value="Save">submit</button>
+        </form>
+    </div>
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+
 {% endblock %}

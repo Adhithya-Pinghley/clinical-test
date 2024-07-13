@@ -17,6 +17,7 @@ urlpatterns = [
     path('emergency', views.emergency, name = "emergency"),
     path('logout', views.logout, name = "logout"),
     path('contactus', views.contactus, name = "contactus"),
+    path('editDocDetails/<pk>', views.editDocDetails, name = "editDocDetails"),
     path('onlineprescription', views.onlineprescription, name = "onlineprescription"),
     path('doctorprofile', views.doctorprofile, name = "doctorprofile"),
     path('yourPrescriptions', views.yourPrescriptions, name = "yourPrescriptions"),
@@ -35,6 +36,7 @@ urlpatterns = [
     path('dummy', views.dummy, name = "dummy"),
     path('createNewMedicine', views.createNewMedicine, name = 'createNewMedicine'),
     path('createTimeline', views.createTimeline, name='createTimeline'),
+    path('createTimelineDirect/<pk>', views.createTimelineDirect, name='createTimelineDirect'),
     path('catchqrcode', views.catchqrcode, name='catchqrcode'),
     # path('whatsappStatus', views.whatsappStatus, name='whatsappStatus'),
     path('whatsappBrowser', views.whatsappBrowser, name = 'whatsappBrowser'),
@@ -49,6 +51,9 @@ urlpatterns = [
     path('uploadExcel', views.uploadExcel, name = 'uploadExcel'),
     path('countPrescriptionRows', views.countPrescriptionRows, name = 'countPrescriptionRows'),
     path('uploadImage', views.uploadImage, name = 'uploadImage'),
+    path('passwordResetReq/', views.passwordResetReq, name='passwordResetReq'),
+    path('verifyOtp/', views.verifyOtp, name='verifyOtp'),
+    path('resetPassword/<int:pk>/', views.resetPassword, name='resetPassword'),
 ]
 
 # from django.urls import path

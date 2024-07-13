@@ -42,12 +42,12 @@
                     
                 <div id = "nextAppointment"></div>
                 <h6> Next Appointment </h6> 
-                <h6 id = "status" name = "status"> {{ status }} </h6> 
-                    <h6 id = "appointTime" name = "appointTime"> {{ nextFirstAppoint.time }} </h6>
+                <h6 id = "status" name = "status">  </h6> <!--{{ status }}-->
+                    <h6 id = "appointTime" name = "appointTime">  </h6> <!--{{ nextFirstAppoint.time }}-->
                     <!-- {{ nextFirstAppoint.time }} -->
-                    <h6 id = "appointDate"> {{ nextFirstAppoint.date }} </h6>
-                    <h6 id = "appointPatient"> {{ nextFirstAppoint.appointmentpatient }} </h6>
-                    <h6 id = "appointNotes"> {{ nextFirstAppoint.notes }} </h6> 
+                    <h6 id = "appointDate" name = "appointDate">  </h6> <!--{{ nextFirstAppoint.date }}-->
+                    <h6 id = "appointPatient" name = "appointPatient">  </h6> <!--{{ nextFirstAppoint.appointmentpatient }}-->
+                    <h6 id = "appointNotes" name = "appointNotes">  </h6> <!--{{ nextFirstAppoint.notes }}-->
                 </div>
             </div>
             
@@ -95,13 +95,34 @@
                     </li>   
                 </ul>
             </div>
-            <div class="col datacols">Completed Appointments</div>
-        </div>
-        <div class="row">
-            <div class="col datacols">Revenue</div>
-            <div class="col datacols">Analytics</div>
+            <!-- <div class="col datacols">Completed Appointments</div> -->
+            <div class="col-md appointmentrow">
+                <h6> Completed Appointments: </h6>
+                <ul class="container-fluid justify-content-center" id = 'CompletedAppointmentList'>
+                    <!--This below should repeat as a list item using python and data from backend-->
+                     
+                    
+                       
+                </ul>
+            </div>
         </div>
     </div>
+        <div class="container-fluid" >
+            <div class="row">
+                <!--<div class="col datacols">Revenue</div>-->
+                <div class="col-md appointmentrow">
+                    <h6> Patient List: </h6>
+                    <ul class="container-fluid justify-content-center" id = 'ListOfPatients'>
+                        <!--This below should repeat as a list item using python and data from backend-->
+                        
+                        
+                    </ul>
+                </div>
+    
+            
+                <div class="col datacols">Analytics</div>
+            </div>
+        </div>
 
     {% if request.session.isLoggedIn %}
       {% else %}
@@ -226,6 +247,49 @@
 
     }
 
+    function completeAppoint(appointmentId) {
+        // $isCompleted.find('button').click(function(appointmentId) {
+    // Optionally, send an AJAX request to the server to update the appointment status
+    console.log('completeIDPK: ', appointmentId)
+    $.ajax({
+        // url: '/update_appointment_status/', // URL to your update endpoint
+        url : "{% url 'updateDashboard' %}",
+        type: 'POST',
+        data: {
+            id: appointmentId,
+            status: true,
+            csrfmiddlewaretoken: '{{ csrf_token }}' 
+        },
+        success: function(response) {
+            console.log('Appointment status updated successfully.');
+        },
+        error: function(xhr, status, error) {
+            console.error('Error updating appointment status:', error);
+        }
+    });        
+        } 
+    function incompleteAppoint(appointmentId) {
+        // $isCompleted.find('button').click(function(appointmentId) {
+    // Optionally, send an AJAX request to the server to update the appointment status
+    console.log('completeIDPK: ', appointmentId)
+    $.ajax({
+        // url: '/update_appointment_status/', // URL to your update endpoint
+        url : "{% url 'updateDashboard' %}",
+        type: 'POST',
+        data: {
+            id: appointmentId,
+            status: false,
+            csrfmiddlewaretoken: '{{ csrf_token }}' 
+        },
+        success: function(response) {
+            console.log('Appointment status updated successfully.');
+        },
+        error: function(xhr, status, error) {
+            console.error('Error updating appointment status:', error);
+        }
+    });        
+        } 
+        
     $(document).ready(function() {
         function currentAppointment() {
             $.ajax({
@@ -239,27 +303,28 @@
 
                         
                         var nextFirstAppoint = data.nextFirstAppoint;
+                        console.log('next first appoint:', data.nextFirstAppoint)
                         if (nextFirstAppoint != null) {
                         var formattedTime = formatTime(nextFirstAppoint.fields.time);
                         var formattedDate = formatDate(nextFirstAppoint.fields.date);
-                        
-                        $('#appointDate').html(formattedDate);
-                        $('#appointTime').html(formattedTime);
-                        $('#appointPatient').val(nextFirstAppoint.fields.appointmentpatient);
-                        $('#appointNotes').val(nextFirstAppoint.fields.notes);
-                        $('#status').val(data.status);
+                        console.log('next first appoint status:', data.status)
+                        $('#appointDate').text(formattedDate);
+                        $('#appointTime').text(formattedTime);
+                        $('#appointPatient').text(nextFirstAppoint.fields.appointmentpatient);
+                        $('#appointNotes').text(nextFirstAppoint.fields.notes);
+                        $('#status').text(data.status);
                         } else {
-                            $('#appointDate').html('');
-                            $('#appointTime').html('');
-                            $('#appointPatient').val('');
-                            $('#appointNotes').val('');
-                            $('#status').val('no more appointments today...');
+                            $('#appointDate').text('');
+                            $('#appointTime').text('');
+                            $('#appointPatient').text('');
+                            $('#appointNotes').text('');
+                            $('#status').text('no more appointments today...');
                         }
 
 
                         
                         var curAppoints = data.curAppoints;
-                        
+                        console.log('next appoints:', data.curAppoints)
                         
                         var appointmentList = document.getElementById('appointmentList');
                         var appointListItem = document.getElementById('appointListItem');
@@ -305,8 +370,13 @@
 
                         var LastAppointmentList = document.getElementById('LastAppointmentList');
                         LastAppointmentList.innerHTML = '';
+                        console.log('last appoints:', lastIncompleteAppoints)
                         if (lastIncompleteAppoints != null) {
                         lastIncompleteAppoints.forEach(function(lastAppoint){
+                            var baseUrl = "{% url 'editAppointments' 0 %}";
+                            var appointId = lastAppoint.pk;
+                            var appointmentId = '{{ lastAppoint.pk }}'
+                            console.log('appointPK: ', lastAppoint.pk)
                             var formattedListTime = formatTime(lastAppoint.fields.time);
                             var formattedListDate = formatDate(lastAppoint.fields.date);
                             var $listItem = $('<li class="col-fluid-md" style="list-style: none;"></li>');
@@ -315,12 +385,14 @@
                             var $listDate = $('<div class="datalist listDate"></div>');
                             var $listPatient = $('<div class="datalist listPatient"></div>');
                             var $listNotes = $('<div class="datalist listNotes"></div>');
-                            var $isCompleted = $('<div class="datalist listNotes"><button class="button" onclick = "completeAppoint()">Completed</button></div>');
+                            var rescheduleUrl = baseUrl.replace('0', appointId);
+                            var $listReschedule = $('<a>',{ 'class': 'button','href': rescheduleUrl,'text': 'Reschedule'});
+                            var $isCompleted = $('<div class="datalist listNotes"><button class="button" onclick = "completeAppoint('+ lastAppoint.pk +')">Completed</button></div>');
                             $listTime.text(formattedListTime);
                             $listDate.text(formattedListDate);
                             $listPatient.text(lastAppoint.fields.appointmentpatient);
                             $listNotes.text(lastAppoint.fields.notes);
-                            $listContent.append($listTime, $listDate, $listPatient, $listNotes, $isCompleted);
+                            $listContent.append($listTime, $listDate, $listPatient, $listNotes, $listReschedule, $isCompleted);
                             $listItem.append($listContent);
                             console.log($listItem);
                             LastAppointmentList.appendChild($listItem[0]);
@@ -328,19 +400,71 @@
                     } else {
                         LastAppointmentList.innerHTML = 'no appointments';
                     }
+                    var completedAppoints = data.completedAppoint;
 
-                    //$('#status').val(data.status);
-                   // $('#nextAppointment').empty();
-                    //if(data.nextFirstAppoint) {
-                   //     var nextAppoint = '<div class = "appointment">' +
-                     //       '<h6>' + appointment.appointTime + '</h6>' +
-                    //        '<p>' + appointment.appointDate + '</p>' +
-                    //        '<p>' + appointment.appointPatient + '</p>' +
-                       //     '<p>' + appointment.appointNotes + '</p>' +
-                     //       '</div>';
-                     //      $('#nextAppointment').append(nextAppoint);
-                    //}
-                    
+                        var CompletedAppointmentList = document.getElementById('CompletedAppointmentList');
+                        CompletedAppointmentList.innerHTML = '';
+                        //console.log('last appoints:', lastIncompleteAppoints)
+                        if (completedAppoints != null) {
+                            completedAppoints.forEach(function(completedAppoint){
+                            var appointId = completedAppoint.pk
+                            var baseUrl = "{% url 'editAppointments' 0 %}";
+                            var formattedListTime = formatTime(completedAppoint.fields.time);
+                            var formattedListDate = formatDate(completedAppoint.fields.date);
+                            var $listItem = $('<li class="col-fluid-md" style="list-style: none;"></li>');
+                            var $listContent = $('<div class="appointListItem" id="listLastcontent"></div>');
+                            var $listTime = $('<div class="datalist listTime"></div>');
+                            var $listDate = $('<div class="datalist listDate"></div>');
+                            var $listPatient = $('<div class="datalist listPatient"></div>');
+                            var $listNotes = $('<div class="datalist listNotes"></div>');
+                            var rescheduleUrl = baseUrl.replace('0', appointId);
+                            var $listReschedule = $('<a>',{ 'class': 'button','href': rescheduleUrl,'text': 'Reschedule'});
+                            var $isCompleted = $('<div class="datalist listNotes"><button class="button" onclick = "incompleteAppoint('+ completedAppoint.pk +')">pending</button></div>');
+                            $listTime.text(formattedListTime);
+                            $listDate.text(formattedListDate);
+                            $listPatient.text(completedAppoint.fields.appointmentpatient);
+                            $listNotes.text(completedAppoint.fields.notes);
+                            $listContent.append($listTime, $listDate, $listPatient, $listNotes,$listReschedule, $isCompleted);
+                            $listItem.append($listContent);
+                            console.log($listItem);
+                            CompletedAppointmentList.appendChild($listItem[0]);
+                        });
+                    } else {
+                        CompletedAppointmentList.innerHTML = 'no appointments';
+                    }
+
+                    var patientList = data.patientList;
+
+                        var ListOfPatients = document.getElementById('ListOfPatients');
+                        ListOfPatients.innerHTML = '';
+                        console.log('patientlist:', patientList)
+                        if (patientList != null) {
+                            patientList.forEach(function(patientListObj){
+                            var patientId = patientListObj.pk
+                            var baseUrl = "{% url 'createTimelineDirect' 0 %}";
+                           // var formattedListTime = formatTime(patientListObj.fields.time);
+                           // var formattedListDate = formatDate(patientListObj.fields.date);
+                            var $listItem = $('<li class="col-fluid-md" style="list-style: none;"></li>');
+                            var $listContent = $('<div class="appointListItem" id="listpatientcontent"></div>');
+                            var $listName = $('<div class="datalist listName"></div>');
+                            var $listAge = $('<div class="datalist listAge"></div>');
+                            var $listNumber = $('<div class="datalist listNumber"></div>');
+                            var $listSex = $('<div class="datalist listSex"></div>');
+                            var rescheduleUrl = baseUrl.replace('0', patientId);
+                            var $history = $('<a>',{ 'class': 'button','href': rescheduleUrl,'text': 'History'});
+                            //var $history = $('<div class="datalist listNotes"><button class="button" onclick = "patientHistory('+ patientListObj.pk +')">history</button></div>');
+                            $listName.text(patientListObj.fields.name);
+                            $listAge.text(patientListObj.fields.rollNumber);
+                            $listNumber.text(patientListObj.fields.contactNumber);
+                            $listSex.text(patientListObj.fields.passwordHash);
+                            $listContent.append($listName, $listAge, $listNumber, $listSex,$history);
+                            $listItem.append($listContent);
+                            console.log($listItem);
+                            ListOfPatients.appendChild($listItem[0]);
+                        });
+                    } else {
+                        ListOfPatients.innerHTML = 'no appointments';
+                    }
                 }
             });
         }
